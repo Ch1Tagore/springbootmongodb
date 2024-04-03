@@ -3,14 +3,14 @@ package testApplication.controller;
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
+import jakarta.annotation.security.DeclareRoles;
 import jakarta.annotation.security.RolesAllowed;
-import org.apache.tomcat.Jar;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.context.annotation.Role;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.parameters.P;
 import org.springframework.stereotype.Service;
 import org.springframework.web.bind.annotation.*;
 import testApplication.springbootmongodb.model.TodoDTO;
@@ -20,7 +20,6 @@ import testApplication.springbootmongodb.repository.Userrepo;
 
 import java.time.Duration;
 import java.util.*;
-import java.util.function.DoublePredicate;
 
 @Service
 @RestController("/todo")
@@ -28,6 +27,7 @@ public class TodoController {
 
     private TodoRepository todorepo;
     private Userrepo usr;
+
     private final Bucket bucket=Bucket.builder().addLimit(Bandwidth.classic(10, Refill.intervally(100, Duration.ofMinutes(1)))).build();
 
     @Autowired
@@ -39,7 +39,7 @@ public class TodoController {
 
 
 
-    @GetMapping("/user/amount")
+    @GetMapping("/amount")
     public ResponseEntity<?> getAllToodos(){
         if(!bucket.tryConsume(1)){
             return new ResponseEntity<>(HttpStatus.TOO_MANY_REQUESTS.toString(),HttpStatus.TOO_MANY_REQUESTS);
@@ -53,7 +53,7 @@ public class TodoController {
         return new ResponseEntity<List<TodoDTO>>(todos,HttpStatus.OK);
     }
 
-    @PostMapping("/admin/postnewtrasction")
+    @PostMapping("/postnewtransaction")
     public ResponseEntity<?> createTodo(@RequestBody TodoDTO todo){
         try {
             todo.setDtOfTransDate(new Date(System.currentTimeMillis()));
@@ -94,7 +94,7 @@ public class TodoController {
         return d.toString();
 
     }
-    @GetMapping(value = "/user/byweek")
+    @GetMapping(value = "/byweek")
     @Cacheable("WeekByCache")
     public String getallbyweek(){
         if(!bucket.tryConsume(1)){
@@ -114,6 +114,7 @@ public class TodoController {
         for(TodoDTO todo:todos){
             Date f=todo.getDtOfTransDate();
             Calendar calendar=Calendar.getInstance();
+            calendar.set(f.getYear()+1900, f.getMonth(), f.getDay());
             int i=calendar.get(Calendar.WEEK_OF_YEAR);
             HashMap<String,HashMap<String,Float>> x=d.get(i);
             HashMap<String,Float> y=x.get(todo.getCreOrDebt());
@@ -126,11 +127,10 @@ public class TodoController {
             x.put(todo.getCreOrDebt(),y);
             d.put(i,x);
         }
-
         return d.toString();
     }
 
-    @GetMapping("/user/aggrebymon")
+    @GetMapping("/aggrebymon")
     @Cacheable("MonthByCache")
     public String getla(){
         if(!bucket.tryConsume(1)){
@@ -170,7 +170,7 @@ public class TodoController {
     }
 
 //"YearByCache","MonthByCache","WeekByCache","AgrregateByCache"
-    @GetMapping("/user/aggrebyyear")
+    @GetMapping("/aggrebyyear")
     @Cacheable("YearByCache")
     public String getby(){
         if(!bucket.tryConsume(1)){
@@ -212,12 +212,13 @@ public class TodoController {
         return s.toString();
     }
 
-    @GetMapping("/user/conversiontoINR")
+    @GetMapping("/conversiontoINR")
     @Cacheable("currConvertertoINR")
     public String CurrencyconversionTOINR(){
         if(!bucket.tryConsume(1)){
             return HttpStatus.TOO_MANY_REQUESTS.toString();
         }
+        System.out.println(bucket.getAvailableTokens());
         System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> uss=todorepo.findAll();
         HashMap<String,Double>d=new HashMap<String,Double>();
@@ -236,12 +237,13 @@ public class TodoController {
         return x.toString();
 
     }
-    @GetMapping("/user/conversiontoUSD")
+    @GetMapping("/conversiontoUSD")
     @Cacheable("currConvertertoUSD")
     public String CurrencyconversionTOUSD(){
         if(!bucket.tryConsume(1)){
             return HttpStatus.TOO_MANY_REQUESTS.toString();
         }
+
         System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> uss=todorepo.findAll();
         HashMap<String,Double>d=new HashMap<String,Double>();
@@ -267,6 +269,7 @@ public class TodoController {
         if(!bucket.tryConsume(1)){
             return HttpStatus.TOO_MANY_REQUESTS.toString();
         }
+        System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> todos=todorepo.findAll();
         HashMap<String,Double> d1=new HashMap<>();
         d1.put("INR",83.33);
@@ -300,12 +303,13 @@ public class TodoController {
 
     }
 
-    @GetMapping("/user/aggrebyyear/USD")
+    @GetMapping("/aggrebyyear/USD")
     @Cacheable("currConvertertoINRInyear")
     public String vv(){
         if(!bucket.tryConsume(1)){
             return HttpStatus.TOO_MANY_REQUESTS.toString();
         }
+        System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> todos=todorepo.findAll();
         HashMap<String,Double> d1=new HashMap<>();
         d1.put("USD",0.0012);
@@ -338,12 +342,13 @@ public class TodoController {
         return h.toString();
 
     }
-    @GetMapping("/user/aggrebymon/INR")
+    @GetMapping("/aggrebymon/INR")
     @Cacheable("currConverterUSDtoINRInyearBymon")
     public String getbymoninr(){
         if(!bucket.tryConsume(1)){
             return HttpStatus.TOO_MANY_REQUESTS.toString();
         }
+        System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> todos=todorepo.findAll();
         HashMap<Integer,HashMap<String,Double>>h=new HashMap<>();
         for(int i=1;i<=12;i+=1){
@@ -369,12 +374,13 @@ public class TodoController {
 
     }
 
-    @GetMapping("/user/aggrebymon/USD")
+    @GetMapping("/aggrebymon/USD")
     @Cacheable("currConverterINRtoUSDInyearBymon")
     public String getbymonusd(){
         if(!bucket.tryConsume(1)){
             return HttpStatus.TOO_MANY_REQUESTS.toString();
         }
+        System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> todos=todorepo.findAll();
         HashMap<Integer,HashMap<String,Double>>h=new HashMap<>();
         for(int i=1;i<=12;i+=1){
@@ -399,9 +405,13 @@ public class TodoController {
         return h.toString();
 
     }
-    @GetMapping("/user/aggrebyweek/INR")
+    @GetMapping("/aggrebyweek/INR")
     @Cacheable("currConverterUSDtoINRbyweek")
     public String convbyweekINR(){
+        if(!bucket.tryConsume(1)){
+            return HttpStatus.TOO_MANY_REQUESTS.toString();
+        }
+        System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> todos=todorepo.findAll();
         HashMap<Integer,HashMap<String,Double>> d=new HashMap<>();
         for(int i=1;i<=52;i+=1){
@@ -415,6 +425,7 @@ public class TodoController {
         for(TodoDTO todo:todos){
             Date f=todo.getDtOfTransDate();
             Calendar calendar=Calendar.getInstance();
+            calendar.set(f.getYear()+1900, f.getMonth(), f.getDay());
             int i=calendar.get(Calendar.WEEK_OF_YEAR);
             HashMap<String,Double> h=d.get(i);
             String s1=todo.getCur_rate();
@@ -430,12 +441,13 @@ public class TodoController {
         return d.toString();
     }
 
-    @GetMapping("/user/aggrebyweek/USD")
+    @GetMapping("/aggrebyweek/USD")
     @Cacheable("currConverterINRtoUSDbyweek")
     public String convbyweekUSD(){
         if(!bucket.tryConsume(1)){
             return HttpStatus.TOO_MANY_REQUESTS.toString();
         }
+        System.out.println(bucket.getAvailableTokens());
         List<TodoDTO> todos=todorepo.findAll();
         HashMap<Integer,HashMap<String,Double>> d=new HashMap<>();
         for(int i=1;i<=52;i+=1){
@@ -448,7 +460,9 @@ public class TodoController {
         }
         for(TodoDTO todo:todos){
             Date f=todo.getDtOfTransDate();
+            System.out.println(f.getYear()+1900+" "+f.getMonth()+" "+f.getDate());;
             Calendar calendar=Calendar.getInstance();
+            calendar.set(f.getYear()+1900,f.getMonth(),f.getDay());
             int i=calendar.get(Calendar.WEEK_OF_YEAR);
             HashMap<String,Double> h=d.get(i);
             String s1=todo.getCur_rate();
