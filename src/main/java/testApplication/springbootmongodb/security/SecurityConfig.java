@@ -1,13 +1,10 @@
 package testApplication.springbootmongodb.security;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
-import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractAuthenticationFilterConfigurer;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,16 +21,19 @@ import java.util.*;
 @EnableWebSecurity
 public class SecurityConfig {
 
-
-    @Autowired
     private Userrepo userrepo;
 
+    SecurityConfig(Userrepo userrepo){
+        this.userrepo=userrepo;
+    }
+
     @Bean
-    public UserDetailsService userDetailsService() {
-        List<UserDTO> uss = userrepo.findAll();
-        InMemoryUserDetailsManager x = new InMemoryUserDetailsManager();
-        for (UserDTO u : uss) {
-            UserDetails user1 = User.builder().username(u.getUsername()).password(passwordEncoder().encode(u.getPassword())).authorities(u.getRole()).build();
+    public UserDetailsService userDetailsService(){
+        List<UserDTO> uss=userrepo.findAll();
+
+        InMemoryUserDetailsManager x= new InMemoryUserDetailsManager();
+        for(UserDTO u:uss){
+            UserDetails user1= User.builder().username(u.getUsername()).password(passwordEncoder().encode(u.getPassword())).roles(u.getRole()).build();
             System.out.println(user1);
             x.createUser(user1);
         }
@@ -41,19 +41,16 @@ public class SecurityConfig {
         return x;
     }
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-         http.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests((auth) -> {
-             auth.requestMatchers(HttpMethod.POST, "/postnewtransaction").hasAuthority("admin");
-             auth.requestMatchers(HttpMethod.GET, "/**").hasAnyAuthority("admin", "user");
-             auth.anyRequest().authenticated();
-         }).httpBasic(Customizer.withDefaults());
-         return http.build();
-    }
-
-    @Bean
     public BCryptPasswordEncoder passwordEncoder(){
         return new BCryptPasswordEncoder();
     }
 
 
+    public void configure(HttpSecurity http) throws Exception {
+         http.csrf(AbstractHttpConfigurer::disable).authorizeHttpRequests((auth)->{
+            auth.requestMatchers("/admin/**").hasAuthority("admin");
+            auth.requestMatchers("/user/**").hasRole("user");
+            auth.anyRequest().authenticated();
+        }).build();
+    }
 }
